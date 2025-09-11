@@ -9,6 +9,20 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  async signup(signupData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+  }) {
+    const user = await this.usersService.create(signupData);
+
+    // Remove password from returned user object
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
 
