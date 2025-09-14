@@ -29,6 +29,12 @@ export class SpotifyController {
     return this.spotifyService.getPopularKPopTracks(limitNum);
   }
 
+  @Get('recent/kpop')
+  async getRecentKPopReleases(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit, 10) : 3;
+    return this.spotifyService.getRecentKPopReleases(limitNum);
+  }
+
   @Get('track/:id')
   async getTrack(@Query('id') trackId: string) {
     return this.spotifyService.getTrackById(trackId);
