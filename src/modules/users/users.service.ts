@@ -3,6 +3,18 @@ import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { User, Prisma } from '@prisma/client';
 
+export interface FriendUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  profileImage: string | null;
+  createdAt: Date;
+  _count: {
+    playlists: number;
+  };
+}
+
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
@@ -135,5 +147,158 @@ export class UsersService {
 
   async remove(id: string): Promise<void> {
     await this.prisma.user.delete({ where: { id } });
+  }
+
+  // Friendship methods
+  async addFriend(userId: string, friendId: string): Promise<User | null> {
+    // Check if users exist
+    const user = await this.findOne(userId);
+    const friend = await this.findOne(friendId);
+
+    if (!user || !friend) {
+      throw new Error('User or friend not found');
+    }
+
+    if (userId === friendId) {
+      throw new Error('Cannot add yourself as a friend');
+    }
+
+    // Check if already friends
+    const existingFriendship = await this.prisma.friendship.findFirst({
+      where: {
+        userId: userId,
+        friendId: friendId,
+      },
+    });
+
+    if (existingFriendship) {
+      throw new Error('Already friends with this user');
+    }
+
+    // Add friendship (bidirectional)
+    console.log(`Adding friendship: ${userId} -> ${friendId}`);
+    await this.prisma.friendship.createMany({
+      data: [
+        { userId: userId, friendId: friendId },
+        { userId: friendId, friendId: userId },
+      ],
+    });
+
+    console.log(`Friendship added successfully`);
+    return this.findOne(userId);
+  }
+
+  async removeFriend(userId: string, friendId: string): Promise<User | null> {
+    // Remove friendship (bidirectional)
+    await this.prisma.friendship.deleteMany({
+      where: {
+        OR: [
+          { userId: userId, friendId: friendId },
+          { userId: friendId, friendId: userId },
+        ],
+      },
+    });
+
+    return this.findOne(userId);
+  }
+
+  async getFriends(userId: string): Promise<FriendUser[]> {
+    const friendships = await this.prisma.friendship.findMany({
+      where: { userId: userId },
+      include: {
+        friend: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            profileImage: true,
+            createdAt: true,
+            _count: {
+              select: {
+                playlists: {
+                  where: { isPublic: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return friendships.map((f) => f.friend);
+  }
+
+  async getFriendStatus(
+    userId: string,
+    targetUserId: string,
+  ): Promise<{
+    isFriend: boolean;
+    canAddFriend: boolean;
+  }> {
+    if (userId === targetUserId) {
+      return { isFriend: false, canAddFriend: false };
+    }
+
+    const friendship = await this.prisma.friendship.findFirst({
+      where: {
+        userId: userId,
+        friendId: targetUserId,
+      },
+    });
+
+    return {
+      isFriend: !!friendship,
+      canAddFriend: !friendship,
+    };
+  }
+
+  async getFriendRecommendations(
+    userId: string,
+    limit: number = 10,
+  ): Promise<FriendUser[]> {
+    // Get users who are not already friends and have public playlists
+    const userFriendships = await this.prisma.friendship.findMany({
+      where: { userId: userId },
+      select: { friendId: true },
+    });
+
+    const friendIds = userFriendships.map((f) => f.friendId);
+
+    const recommendations = await this.prisma.user.findMany({
+      where: {
+        AND: [
+          { id: { not: userId } },
+          { id: { notIn: friendIds } },
+          { isActive: true },
+          {
+            playlists: {
+              some: { isPublic: true },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        profileImage: true,
+        createdAt: true,
+        _count: {
+          select: {
+            playlists: {
+              where: { isPublic: true },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+
+    return recommendations;
   }
 }

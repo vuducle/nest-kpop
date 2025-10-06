@@ -11,6 +11,7 @@ import {
   BadRequestException,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -118,5 +119,63 @@ export class UsersController {
   @Get('profile')
   async getProfile(@Request() req: any) {
     return req.user;
+  }
+
+  @Get('test')
+  test() {
+    return 'Hello World!';
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('test-friends')
+  async testFriends(@Request() req: any) {
+    const userId = req.user.id;
+    console.log('testFriends called with userId:', userId);
+
+    // Return a simple string to test if the response serialization works
+    return 'Hello from test-friends!';
+  }
+
+  // Friendship endpoints
+  // Note: More specific routes must come before more general routes
+  @UseGuards(JwtAuthGuard)
+  @Get('friends/recommendations')
+  async getFriendRecommendations(
+    @Request() req: any,
+    @Query('limit') limit?: string,
+  ) {
+    const userId = req.user.id;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.usersService.getFriendRecommendations(userId, limitNum);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('friends/status/:targetUserId')
+  async getFriendStatus(
+    @Request() req: any,
+    @Param('targetUserId') targetUserId: string,
+  ) {
+    const userId = req.user.id;
+    return this.usersService.getFriendStatus(userId, targetUserId);
+  }
+
+  @Get('my-friends')
+  getFriends() {
+    console.log('=== SIMPLE getFriends called ===');
+    return [{ id: '1', name: 'Test Friend' }];
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('friends/:friendId')
+  async addFriend(@Request() req: any, @Param('friendId') friendId: string) {
+    const userId = req.user.id;
+    return this.usersService.addFriend(userId, friendId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('friends/:friendId')
+  async removeFriend(@Request() req: any, @Param('friendId') friendId: string) {
+    const userId = req.user.id;
+    return this.usersService.removeFriend(userId, friendId);
   }
 }
