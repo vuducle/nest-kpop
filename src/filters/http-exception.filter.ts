@@ -19,19 +19,25 @@ import { Request, Response } from 'express';
  * app.useGlobalFilters(new HttpExceptionFilter());
  * ```
  */
-@Catch(HttpException)
+@Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   /**
    * Catches HTTP exceptions and formats them into standardized error responses.
    *
-   * @param exception - The HTTP exception that was thrown
+   * @param exception - The exception that was thrown
    * @param host - Arguments host containing request/response context
    */
-  catch(exception: HttpException, host: ArgumentsHost) {
+  catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
-    const status = exception.getStatus();
+
+    console.error('Exception caught by filter:', exception);
+
+    const status =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const errorResponse = {
       statusCode: status,

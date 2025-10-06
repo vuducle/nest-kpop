@@ -19,6 +19,10 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
+  async findByUsername(username: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { username } });
+  }
+
   async create(userData: Prisma.UserCreateInput): Promise<User> {
     // Check if user already exists
     const existingUserDenisKunz = await this.prisma.user.findFirst({
@@ -47,9 +51,16 @@ export class UsersService {
   }
 
   async update(
-    id: string,
+    username: string,
     userData: Prisma.UserUpdateInput,
   ): Promise<User | null> {
+    // Check if user exists first by username
+    const existingUser = await this.findByUsername(username);
+    if (!existingUser) {
+      console.error('User not found', username);
+      throw new Error('User not found');
+    }
+
     const updateData = { ...userData };
 
     // Hash password if it's being updated
@@ -57,12 +68,62 @@ export class UsersService {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
+    // Update using the user's ID
     await this.prisma.user.update({
-      where: { id },
+      where: { id: existingUser.id },
       data: updateData,
     });
 
-    return this.findOne(id);
+    // Return the updated user by ID
+    return this.findOne(existingUser.id);
+  }
+
+  async updateProfile(
+    id: string,
+    profileData: {
+      firstName?: string;
+      lastName?: string;
+      username?: string;
+      profileImage?: string;
+      phoneNumber?: string;
+    },
+  ): Promise<User | null> {
+    try {
+      const currentUser = await this.findOne(id);
+      if (!currentUser) {
+        throw new Error('User not found');
+      }
+
+      const updateData: Prisma.UserUpdateInput = { ...profileData };
+
+      // Track username changes
+      if (
+        profileData.username &&
+        profileData.username !== currentUser.username
+      ) {
+        // Check if new username is already taken
+        const existingUser = await this.prisma.user.findUnique({
+          where: { username: profileData.username },
+        });
+
+        if (existingUser && existingUser.id !== id) {
+          throw new ConflictException('Username already taken');
+        }
+
+        updateData.usernameChangeCount =
+          (currentUser.usernameChangeCount || 0) + 1;
+      }
+
+      await this.prisma.user.updateMany({
+        where: { id },
+        data: updateData,
+      });
+
+      return this.findOne(id);
+    } catch (error) {
+      console.error('updateProfile error:', error);
+      throw error;
+    }
   }
 
   async validatePassword(

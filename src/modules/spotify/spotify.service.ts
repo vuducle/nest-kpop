@@ -296,4 +296,15 @@ export class SpotifyService {
       return this.getPopularKPopTracks(limit);
     }
   }
+
+  async exchangeCodeForToken(code: string): Promise<any> {
+    this.logger.warn(
+      'Spotify OAuth exchange is currently disabled. Returning placeholder response.',
+    );
+    // Placeholder response while auth is disabled
+    return {
+      placeholder: true,
+      message: 'Spotify OAuth exchange will be implemented later.',
+    };
+  }
 }

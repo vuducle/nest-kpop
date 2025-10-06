@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body } from '@nestjs/common';
 import { SpotifyService } from './spotify.service';
 
 @Controller('spotify')
@@ -56,5 +56,10 @@ export class SpotifyController {
   ) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
     return this.spotifyService.getArtistTopTracks(artistId, limitNum);
+  }
+
+  @Post('token')
+  async exchangeCodeForToken(@Body('code') code: string) {
+    return this.spotifyService.exchangeCodeForToken(code);
   }
 }
