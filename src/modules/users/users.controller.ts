@@ -29,6 +29,18 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('search')
+  async searchUsers(
+    @Request() req: any,
+    @Query('q') query: string,
+    @Query('limit') limit?: string,
+  ) {
+    const currentUserId = req.user.id;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.usersService.searchUsers(currentUserId, query, limitNum);
+  }
+
   @Get()
   findAll() {
     return this.usersService.findAll();

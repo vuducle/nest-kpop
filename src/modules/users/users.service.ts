@@ -301,4 +301,68 @@ export class UsersService {
 
     return recommendations;
   }
+
+  async searchUsers(
+    currentUserId: string,
+    query: string,
+    limit: number = 10,
+  ): Promise<FriendUser[]> {
+    if (!query || query.trim().length < 2) {
+      return [];
+    }
+
+    const searchTerm = query.trim();
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        AND: [
+          {
+            id: {
+              not: currentUserId, // Exclude current user
+            },
+          },
+          {
+            OR: [
+              {
+                firstName: {
+                  contains: searchTerm,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                lastName: {
+                  contains: searchTerm,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                username: {
+                  contains: searchTerm,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        profileImage: true,
+        createdAt: true,
+        _count: {
+          select: {
+            playlists: {
+              where: { isPublic: true },
+            },
+          },
+        },
+      },
+      take: limit,
+    });
+
+    return users;
+  }
 }
