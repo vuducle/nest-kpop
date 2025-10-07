@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SongsModule } from './modules/songs/songs.module';
 import { PlaylistsModule } from './modules/playlists/playlists.module';
 import { SpotifyModule } from './modules/spotify/spotify.module';
+import { PostsModule } from './modules/posts/posts.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SpotifyModule } from './modules/spotify/spotify.module';
     SongsModule,
     PlaylistsModule,
     SpotifyModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
